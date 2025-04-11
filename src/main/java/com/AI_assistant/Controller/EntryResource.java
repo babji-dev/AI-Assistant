@@ -24,17 +24,17 @@ public class EntryResource {
     private final VectorStore vectorStore;
 
     private String prompt = """
-            As a subject matter expert you need to answer the requested question basis document section provided.
-            If you're unsure about that you can mention that requested query not in your knowledge bank.
-            
+            Your task is to answer the questions about Indian Constitution. Use the information from the DOCUMENTS
+            section to provide accurate answers. If unsure or if the answer isn't found in the DOCUMENTS section, 
+            simply state that you don't know the answer.
+                        
             QUESTION:
             {input}
-            
+                        
             DOCUMENTS:
             {documents}
-            
+                        
             """;
-
     @Autowired
     public EntryResource(OllamaChatModel chatClient,VectorStore vectorStore){
         this.chatClient = chatClient;
@@ -48,18 +48,28 @@ public class EntryResource {
 
         Map<String,Object> promptParameters = new HashMap<>();
         promptParameters.put("input",message);
-        promptParameters.put("documents",findSimilarData(message));
+            promptParameters.put("documents",findSimilarData(message));
 
 
         return chatClient.call(template.createMessage(promptParameters));
     }
 
     private String findSimilarData(String message) {
-        List<Document> documents = vectorStore.similaritySearch(SearchRequest.builder().topK(5)
+        List<Document> documents = vectorStore.similaritySearch(SearchRequest.builder()
                 .query(message)
                 .build());
+        System.out.println(documents.size());
+         String response = documents.stream().map(Document::getFormattedContent).collect(Collectors.joining("/n"));
+         System.out.println(response);
 
-        return documents.stream().map(Document::getFormattedContent).collect(Collectors.joining());
+         /* Alternative
+         return documents.stream()
+    .limit(5)
+    .map(Document::getFormattedContent)
+    .collect(Collectors.joining("\n"));
+          */
+
+         return response;
     }
 
 }
