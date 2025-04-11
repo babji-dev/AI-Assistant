@@ -1,0 +1,12 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/aiassistant
+    username: root
+    password: root
+  ai:
+  vectorstore:
+    pgvector:
+    index-type: HNSW
+    distance-type: COSINE_DISTANCE
+    dimensions: 1536
+    max-document-batch-size: 10000 # Optional: Maximum number of documents per batch
