@@ -56,9 +56,11 @@ public class EntryResource {
     }
 
     private String findSimilarData(String message,String source) {
+
+        String filterExpr = "source == '" + source + "'";
         List<Document> documents = vectorStore.similaritySearch(SearchRequest.builder()
                 .query(message)
-                .filterExpression(source)
+                .filterExpression(source!=null ? filterExpr : null)
                 .build());
         System.out.println(documents.size());
          String response = documents.stream().map(Document::getFormattedContent).collect(Collectors.joining("/n"));
