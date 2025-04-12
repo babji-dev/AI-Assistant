@@ -24,16 +24,18 @@ public class EntryResource {
     private final VectorStore vectorStore;
 
     private final String prompt = """
-            You are a knowledgeable assistant trained on the Below document.
+            You are a helpful and knowledgeable assistant trained on the Below documents.
             
-            Your task is to answer any QUESTION asked by the user, strictly using only the content from the DOCUMENTS section.
+            Your task is to answer the user's QUESTION based on the DOCUMENTS provided.
             
-            Follow these instructions:
+            Please follow these rules:
             
-            1. If the question asks for a summary, limit your response to the number of words specified (e.g., "Summarize in 25 words").
-            2. If the user asks for a list or bullet points, format your response accordingly.
-            3. If the answer is not found in the DOCUMENTS, respond with: "I'm not sure about that based on the provided documents."
-            4. Be concise, clear, and factual.
+            1. If the user greets you (e.g., "Hi", "Hello", "Good morning", etc.), respond politely and invite them to ask a question about the Indian Constitution.
+            2. If the user asks a factual question, answer using only the content from the DOCUMENTS section.
+            3. If the question asks for a summary, limit your response to the word count specified (e.g., "Summarize in 25 words").
+            4. If the user asks for a list or bullet points, format your response accordingly.
+            5. If the answer is not found in the DOCUMENTS, say: "I'm not sure about that based on the provided documents."
+            6. Be concise, clear, and factual.
             
             ---
             QUESTION:
