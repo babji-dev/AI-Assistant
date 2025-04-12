@@ -9,4 +9,8 @@ CREATE TABLE IF NOT EXISTS vector_store (
 	embedding vector(1024)
 );
 
+CREATE TABLE IF NOT EXISTS loaded_files (
+    filename VARCHAR(255) PRIMARY KEY
+);
+
 CREATE INDEX ON vector_store USING HNSW (embedding vector_cosine_ops);

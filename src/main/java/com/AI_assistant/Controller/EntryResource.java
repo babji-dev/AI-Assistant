@@ -8,6 +8,7 @@ import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import javax.naming.directory.SearchResult;
@@ -23,7 +24,7 @@ public class EntryResource {
 
     private final VectorStore vectorStore;
 
-    private String prompt = """
+    private final String prompt = """
             Your task is to answer the questions about Indian Constitution. Use the information from the DOCUMENTS
             section to provide accurate answers. If unsure or if the answer isn't found in the DOCUMENTS section, 
             simply state that you don't know the answer.
@@ -42,21 +43,22 @@ public class EntryResource {
     }
 
     @GetMapping("/test/{message}")
-    public String answer(@PathVariable String message){
+    public String answer(@PathVariable String message,@RequestParam(required = false) String source){
 
         PromptTemplate template = new PromptTemplate(prompt);
 
         Map<String,Object> promptParameters = new HashMap<>();
         promptParameters.put("input",message);
-            promptParameters.put("documents",findSimilarData(message));
+            promptParameters.put("documents",findSimilarData(message,source));
 
 
         return chatClient.call(template.createMessage(promptParameters));
     }
 
-    private String findSimilarData(String message) {
+    private String findSimilarData(String message,String source) {
         List<Document> documents = vectorStore.similaritySearch(SearchRequest.builder()
                 .query(message)
+                .filterExpression(source)
                 .build());
         System.out.println(documents.size());
          String response = documents.stream().map(Document::getFormattedContent).collect(Collectors.joining("/n"));
