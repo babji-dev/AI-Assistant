@@ -24,25 +24,33 @@ public class EntryResource {
     private final VectorStore vectorStore;
 
     private final String prompt = """
-            Your task is to answer the questions about Indian Constitution. Use the information from the DOCUMENTS
-            section to provide accurate answers. If unsure or if the answer isn't found in the DOCUMENTS section, 
-            simply state that you don't know the answer.
-                        
+            You are a knowledgeable assistant trained on the Below document.
+            
+            Your task is to answer any QUESTION asked by the user, strictly using only the content from the DOCUMENTS section.
+            
+            Follow these instructions:
+            
+            1. If the question asks for a summary, limit your response to the number of words specified (e.g., "Summarize in 25 words").
+            2. If the user asks for a list or bullet points, format your response accordingly.
+            3. If the answer is not found in the DOCUMENTS, respond with: "I'm not sure about that based on the provided documents."
+            4. Be concise, clear, and factual.
+            
+            ---
             QUESTION:
             {input}
-                        
+            
             DOCUMENTS:
             {documents}
-                        
             """;
+
     @Autowired
-    public EntryResource(OllamaChatModel chatClient,VectorStore vectorStore){
+    public EntryResource(OllamaChatModel chatClient, VectorStore vectorStore) {
         this.chatClient = chatClient;
         this.vectorStore = vectorStore;
     }
 
     @PostMapping("/conversation")
-    public String answer(@RequestParam String userInput,@RequestParam(required = false) String source, HttpSession session){
+    public String answer(@RequestParam String userInput, @RequestParam(required = false) String source, HttpSession session) {
 
         List<ChatMessage> messages = ChatController.getMessagesFromSession(session);
         messages.add(new ChatMessage("user", userInput));
@@ -61,9 +69,9 @@ public class EntryResource {
 
         PromptTemplate template = new PromptTemplate(prompt);
 
-        Map<String,Object> promptParameters = new HashMap<>();
-        promptParameters.put("input",context.toString());
-        promptParameters.put("documents",findSimilarData(context.toString(),source));
+        Map<String, Object> promptParameters = new HashMap<>();
+        promptParameters.put("input", context.toString());
+        promptParameters.put("documents", findSimilarData(context.toString(), source));
 
         String llmResponse = chatClient.call(template.createMessage(promptParameters));
         messages.add(new ChatMessage("ai", llmResponse));
@@ -71,16 +79,16 @@ public class EntryResource {
         return llmResponse;
     }
 
-    private String findSimilarData(String message,String source) {
+    private String findSimilarData(String message, String source) {
 
         String filterExpr = "source == '" + source + "'";
         List<Document> documents = vectorStore.similaritySearch(SearchRequest.builder()
                 .query(message)
-                .filterExpression(source!=null ? filterExpr : null)
+                .filterExpression(source != null ? filterExpr : null)
                 .build());
         System.out.println(documents.size());
-         String response = documents.stream().map(Document::getFormattedContent).collect(Collectors.joining("/n"));
-         System.out.println(response);
+        String response = documents.stream().map(Document::getFormattedContent).collect(Collectors.joining("/n"));
+        System.out.println(response);
 
          /* Alternative
          return documents.stream()
@@ -89,7 +97,7 @@ public class EntryResource {
     .collect(Collectors.joining("\n"));
           */
 
-         return response;
+        return response;
     }
 
 }
