@@ -3,6 +3,7 @@ package com.AI_assistant.Controller;
 import com.AI_assistant.Constants.ChatConstant;
 import com.AI_assistant.Models.ChatMessage;
 import com.AI_assistant.Models.ChatSessionState;
+import com.AI_assistant.Models.ValidOptionDto;
 import com.AI_assistant.Utils.UserSuggestionsUtil;
 import jakarta.servlet.http.HttpSession;
 import org.springframework.ai.chat.messages.Message;
@@ -63,26 +64,27 @@ public class EntryResource {
     }
 
     @PostMapping("/conversation")
-    public String answer(@RequestParam String userInput, @RequestParam(required = false) String source, HttpSession session) {
+    public String answer(@RequestParam String userInput, HttpSession session) {
 
         ChatSessionState chatSession = ChatController.getOrInitChatSession(session);
         String optionSelected = (String) session.getAttribute("optionSelected");
+        String source = (String) session.getAttribute("source");
         List<ChatMessage> messages = chatSession.getMessages();
 
         if(optionSelected == null || optionSelected.isBlank()) {
             String automatedResponse = "";
-            if (userSuggestionsUtil.isValidOption(userInput)) {
+            messages.add(new ChatMessage("user",userInput,ChatConstant.AUTOMATED_MESSAGE_TYPE));
+            ValidOptionDto validOptionOrNot = userSuggestionsUtil.isValidOption(userInput);
+            if (validOptionOrNot.isValid()) {
                 session.setAttribute("optionSelected", userInput);
-                messages.add(new ChatMessage("user",userInput,ChatConstant.AUTOMATED_MESSAGE_TYPE));
+                session.setAttribute("source",source);
                 automatedResponse =  "Great! You selected '" + userInput + "'. Ask your question now.";
                 messages.add(new ChatMessage("ai",userInput,ChatConstant.AUTOMATED_MESSAGE_TYPE));
-                return automatedResponse;
             } else {
-                messages.add(new ChatMessage("user",userInput,ChatConstant.AUTOMATED_MESSAGE_TYPE));
-                automatedResponse = "Invalid Input Please select from below! : " + String.join("\n", userSuggestionsUtil.getAvailableOptions());
+                automatedResponse = "Invalid Input : <br/>" + String.join("<br/>", userSuggestionsUtil.getAvailableOptions());
                 messages.add(new ChatMessage("ai",automatedResponse,ChatConstant.AUTOMATED_MESSAGE_TYPE));
-                return automatedResponse;
             }
+            return automatedResponse;
         }
 
         messages.add(new ChatMessage("user", userInput, ChatConstant.CONVERSATION_MESSAGE_TYPE));
@@ -132,7 +134,7 @@ public class EntryResource {
     }
 
     private Message buildPrompt(String summary, List<ChatMessage> context,
-                                String currentUserInput, String docContent,
+                                String currentUserInput, String source,
                                 PromptTemplate template) {
 
         Map<String, Object> promptParameters = new HashMap<>();
@@ -145,7 +147,7 @@ public class EntryResource {
         String contextText = context.stream()
                 .map(m -> m.getSender() + ": " + m.getText())
                 .collect(Collectors.joining("\n"));
-        promptParameters.put("documents", findSimilarData(contextText, null));
+        promptParameters.put("documents", findSimilarData(contextText, source));
         if (summary != null && !summary.isEmpty()) {
             promptParameters.put("summary", summary);
         } else {

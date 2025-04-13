@@ -80,7 +80,10 @@ public class DataLoader {
                 vectorStore.accept(chunks);
 
                 // Mark as loaded
-                jdbcClient.sql("INSERT INTO loaded_files (filename) VALUES (?)").param(1, filename).update();
+                jdbcClient.sql("INSERT INTO loaded_files (filename,description) VALUES (?,?)")
+                        .param(1, filename)
+                        .param(2, filename+"_desc")
+                        .update();
 
                 System.out.println("Loaded: " + filename);
             } catch (Exception e) {

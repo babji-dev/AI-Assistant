@@ -9,4 +9,7 @@ public class ChatConstant {
     public static final int CONTEXT_SIZE = 5;
 
 
+    public static final String OPTION_TYPE_JUNIT = "JUNIT";
+    public static final String OPTION_TYPE_DOCUMENT = "DOCUMENT";
+
 }

@@ -159,7 +159,7 @@
 
         // Clear chat
         $('#clearChatBtn').click(function () {
-            $.post('/chat/clear', function () {
+            $.get('/chat/clear', function () {
                 $('#chatBox').empty();
                 scrollToBottom();
             }).fail(function () {
