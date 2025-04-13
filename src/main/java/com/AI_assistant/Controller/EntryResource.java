@@ -31,33 +31,38 @@ public class EntryResource {
     private final UserSuggestionsUtil userSuggestionsUtil;
 
     private final String prompt = """
-    You are a helpful and knowledgeable assistant trained on the below documents.
-
-    Your task is to answer the user's QUESTION using the DOCUMENTS and previous CONVERSATION SUMMARY for context.
-
-    Please follow these rules:
-
-    1. If the user greets you (e.g., "Hi", "Hello", "Good morning", etc.), respond politely and invite them to ask a question about the below Mentioned documents.
-    2. If the user asks a factual question, answer using only the content from the DOCUMENTS section.
-    3. If the question asks for a summary, limit your response to the word count specified (e.g., "Summarize in 25 words").
-    4. If the user asks for a list or bullet points, format your response accordingly.
-    5. If the answer is not found in the DOCUMENTS, say: "I'm not sure about that based on the provided documents."
-    6. Be concise, clear, and factual.
-
-    ---
-    CONVERSATION SUMMARY:
-    {summary}
-
-    QUESTION:
-    {input}
-
-    DOCUMENTS:
-    {documents}
-    """;
+            You are an AI assistant with access ONLY to the provided DOCUMENTS.
+            
+            Your task is to answer the user's QUESTION strictly using the DOCUMENTS and the CONVERSATION SUMMARY. Do not use external knowledge under any circumstances.
+            
+            Rules to follow:
+            
+            1. If the user greets you (e.g., "Hi", "Hello", etc.), respond politely and ask them to ask a question about the DOCUMENTS.
+            2. If the user asks a factual question, answer ONLY if the answer is explicitly present in the DOCUMENTS.
+            3. If the user asks for a summary, respond with a concise summary using only information from the DOCUMENTS.
+            4. If the user requests a list or bullet points, format the response using data from the DOCUMENTS.
+            5. If the DOCUMENTS do NOT contain the answer, reply exactly with:
+            "I'm not sure about that based on the provided documents."
+            
+            ❗ Do NOT answer based on general knowledge or assumptions.
+            ❗ Do NOT include additional information not in the DOCUMENTS.
+            ❗ Do NOT be overly helpful — stick strictly to the DOCUMENTS.
+            
+            ---
+            
+            CONVERSATION SUMMARY:
+            {summary}
+            
+            QUESTION:
+            {input}
+            
+            DOCUMENTS:
+            {documents}
+            """;
 
 
     @Autowired
-    public EntryResource(OllamaChatModel chatClient, VectorStore vectorStore,UserSuggestionsUtil userSuggestionsUtil) {
+    public EntryResource(OllamaChatModel chatClient, VectorStore vectorStore, UserSuggestionsUtil userSuggestionsUtil) {
         this.chatClient = chatClient;
         this.vectorStore = vectorStore;
         this.userSuggestionsUtil = userSuggestionsUtil;
@@ -71,18 +76,18 @@ public class EntryResource {
         String source = (String) session.getAttribute("source");
         List<ChatMessage> messages = chatSession.getMessages();
 
-        if(optionSelected == null || optionSelected.isBlank()) {
+        if (optionSelected == null || optionSelected.isBlank()) {
             String automatedResponse = "";
-            messages.add(new ChatMessage("user",userInput,ChatConstant.AUTOMATED_MESSAGE_TYPE));
+            messages.add(new ChatMessage("user", userInput, ChatConstant.AUTOMATED_MESSAGE_TYPE));
             ValidOptionDto validOptionOrNot = userSuggestionsUtil.isValidOption(userInput);
             if (validOptionOrNot.isValid()) {
                 session.setAttribute("optionSelected", userInput);
-                session.setAttribute("source",validOptionOrNot.getSource());
-                automatedResponse =  "Great! You selected '" + userInput + "'. Ask your question now.";
-                messages.add(new ChatMessage("ai",userInput,ChatConstant.AUTOMATED_MESSAGE_TYPE));
+                session.setAttribute("source", validOptionOrNot.getSource());
+                automatedResponse = "Great! You selected '" + userInput + "'. Ask your question now.";
+                messages.add(new ChatMessage("ai", userInput, ChatConstant.AUTOMATED_MESSAGE_TYPE));
             } else {
                 automatedResponse = "Invalid Input : <br/>" + String.join("<br/>", userSuggestionsUtil.getAvailableOptions());
-                messages.add(new ChatMessage("ai",automatedResponse,ChatConstant.AUTOMATED_MESSAGE_TYPE));
+                messages.add(new ChatMessage("ai", automatedResponse, ChatConstant.AUTOMATED_MESSAGE_TYPE));
             }
             return automatedResponse;
         }
@@ -92,10 +97,10 @@ public class EntryResource {
         PromptTemplate template = new PromptTemplate(prompt);
 
         List<ChatMessage> contextForLlm = getContextMessages(chatSession);
-        Message msg = buildPrompt(chatSession.getSummary(), contextForLlm, userInput, source,template);
+        Message msg = buildPrompt(chatSession.getSummary(), contextForLlm, userInput, source, template);
         String llmResponse = chatClient.call(msg);
 
-        messages.add(new ChatMessage("ai", llmResponse,ChatConstant.CONVERSATION_MESSAGE_TYPE));
+        messages.add(new ChatMessage("ai", llmResponse, ChatConstant.CONVERSATION_MESSAGE_TYPE));
 
         if (chatSession.getMessages().size() > ChatConstant.SUMMARY_THRESHOLD) {
             chatSession.setSummary(summarizeOldMessages(chatSession.getMessages()));
@@ -116,7 +121,7 @@ public class EntryResource {
             doc.getMetadata().forEach((k, v) -> System.out.println(k + " = " + v));
             System.out.println("Matched: " + doc.getMetadata().get("source"));
         }
-        System.out.println("Similarity Search Data Size : "+documents.size());
+        System.out.println("Similarity Search Data Size : " + documents.size());
 
         return documents.stream().map(Document::getFormattedContent).collect(Collectors.joining("\n"));
     }
