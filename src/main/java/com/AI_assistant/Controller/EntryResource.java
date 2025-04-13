@@ -77,7 +77,7 @@ public class EntryResource {
             ValidOptionDto validOptionOrNot = userSuggestionsUtil.isValidOption(userInput);
             if (validOptionOrNot.isValid()) {
                 session.setAttribute("optionSelected", userInput);
-                session.setAttribute("source",source);
+                session.setAttribute("source",validOptionOrNot.getSource());
                 automatedResponse =  "Great! You selected '" + userInput + "'. Ask your question now.";
                 messages.add(new ChatMessage("ai",userInput,ChatConstant.AUTOMATED_MESSAGE_TYPE));
             } else {
