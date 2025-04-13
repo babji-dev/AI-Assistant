@@ -14,6 +14,7 @@
         body {
             background-color: #f0f2f5;
         }
+
         .chat-container {
             max-width: 800px;
             margin: auto;
@@ -25,6 +26,7 @@
             flex-direction: column;
             height: 90vh;
         }
+
         .chat-header {
             padding: 20px;
             border-bottom: 1px solid #ddd;
@@ -32,16 +34,21 @@
             justify-content: space-between;
             align-items: center;
         }
+
         .chat-body {
             padding: 20px;
             overflow-y: auto;
             flex: 1;
+            display: flex;
+            flex-direction: column;
         }
+
         .chat-footer {
             padding: 15px 20px;
             border-top: 1px solid #ddd;
             background-color: #fafafa;
         }
+
         .chat-message {
             margin: 10px 0;
             padding: 12px 16px;
@@ -49,17 +56,18 @@
             max-width: 70%;
             word-wrap: break-word;
         }
+
         .user-msg {
             background-color: #007bff;
-            color: #fff;
-            align-self: flex-end;
+            color: white;
             text-align: right;
         }
+
         .ai-msg {
-            background-color: #e2f5e7;
+            background-color: #f1f1f1;
             color: #333;
-            align-self: flex-start;
         }
+
         #typingIndicator {
             font-style: italic;
             color: gray;
@@ -84,9 +92,12 @@
 
     <!-- Chat Body -->
     <div id="chatBox" class="chat-body d-flex flex-column">
+        <!-- Loop through Thymeleaf messages -->
         <div th:each="msg : ${messages}">
-            <div th:class="${msg.sender} == 'user' ? 'chat-message user-msg align-self-end' : 'chat-message ai-msg align-self-start'"
-                 th:text="${msg.text}">
+            <div th:class="${msg.sender} == 'user' ? 'd-flex justify-content-end' : 'd-flex justify-content-start'">
+                <div class="chat-message"
+                     th:classappend="${msg.sender} == 'user' ? ' user-msg' : ' ai-msg'"
+                     th:text="${msg.text}"></div>
             </div>
         </div>
     </div>
@@ -100,7 +111,7 @@
     </div>
 </div>
 
-<!-- Script -->
+<!-- Scripts -->
 <script>
     $(document).ready(function () {
         // Submit form
@@ -111,28 +122,37 @@
             if (!userInput) return;
 
             // Append user message
-            $('#chatBox').append(`<div class="chat-message user-msg align-self-end">${userInput}</div>`);
+            $('#chatBox').append(`
+                <div class="d-flex justify-content-end">
+                    <div class="chat-message user-msg">${userInput}</div>
+                </div>
+            `);
             $('#userInput').val('');
 
-            // Create and append typing indicator below user message
-            const typingIndicator = $('<div id="typingIndicator" class="chat-message ai-msg align-self-start">AI is typing...</div>');
+            // Typing indicator
+            const typingIndicator = $('<div class="d-flex justify-content-start" id="typingRow"><div id="typingIndicator" class="chat-message ai-msg">AI is typing...</div></div>');
             $('#chatBox').append(typingIndicator);
 
             scrollToBottom();
 
             const selectedModel = $('#modelSelect').val();
 
-            // Post to server
+            // Send to server
             $.post('/conversation', { userInput: userInput, model: selectedModel }, function (response) {
-                // Remove typing indicator
-                $('#typingIndicator').remove();
-                // Append the AI response
-                $('#chatBox').append(`<div class="chat-message ai-msg align-self-start">${response}</div>`);
+                $('#typingRow').remove();
+                $('#chatBox').append(`
+                    <div class="d-flex justify-content-start">
+                        <div class="chat-message ai-msg">${response}</div>
+                    </div>
+                `);
                 scrollToBottom();
             }).fail(function () {
-                // Remove typing indicator on error
-                $('#typingIndicator').remove();
-                $('#chatBox').append('<div class="chat-message ai-msg align-self-start">⚠️ Error communicating with AI.</div>');
+                $('#typingRow').remove();
+                $('#chatBox').append(`
+                    <div class="d-flex justify-content-start">
+                        <div class="chat-message ai-msg">⚠️ Error communicating with AI.</div>
+                    </div>
+                `);
                 scrollToBottom();
             });
         });
@@ -147,7 +167,7 @@
             });
         });
 
-        // Scroll to bottom on load
+        // Scroll to bottom helper
         function scrollToBottom() {
             $('#chatBox').scrollTop($('#chatBox')[0].scrollHeight);
         }

@@ -5,6 +5,7 @@ import com.AI_assistant.Models.ChatMessage;
 import com.AI_assistant.Models.ChatSessionState;
 import com.AI_assistant.Utils.UserSuggestionsUtil;
 import jakarta.servlet.http.HttpSession;
+import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.prompt.PromptTemplate;
 import org.springframework.ai.document.Document;
 import org.springframework.ai.ollama.OllamaChatModel;
@@ -29,26 +30,30 @@ public class EntryResource {
     private final UserSuggestionsUtil userSuggestionsUtil;
 
     private final String prompt = """
-            You are a helpful and knowledgeable assistant trained on the Below documents.
-            
-            Your task is to answer the user's QUESTION based on the DOCUMENTS provided.
-            
-            Please follow these rules:
-            
-            1. If the user greets you (e.g., "Hi", "Hello", "Good morning", etc.), respond politely and invite them to ask a question about the Indian Constitution.
-            2. If the user asks a factual question, answer using only the content from the DOCUMENTS section.
-            3. If the question asks for a summary, limit your response to the word count specified (e.g., "Summarize in 25 words").
-            4. If the user asks for a list or bullet points, format your response accordingly.
-            5. If the answer is not found in the DOCUMENTS, say: "I'm not sure about that based on the provided documents."
-            6. Be concise, clear, and factual.
-            
-            ---
-            QUESTION:
-            {input}
-            
-            DOCUMENTS:
-            {documents}
-            """;
+    You are a helpful and knowledgeable assistant trained on the below documents.
+
+    Your task is to answer the user's QUESTION using the DOCUMENTS and previous CONVERSATION SUMMARY for context.
+
+    Please follow these rules:
+
+    1. If the user greets you (e.g., "Hi", "Hello", "Good morning", etc.), respond politely and invite them to ask a question about the Indian Constitution.
+    2. If the user asks a factual question, answer using only the content from the DOCUMENTS section.
+    3. If the question asks for a summary, limit your response to the word count specified (e.g., "Summarize in 25 words").
+    4. If the user asks for a list or bullet points, format your response accordingly.
+    5. If the answer is not found in the DOCUMENTS, say: "I'm not sure about that based on the provided documents."
+    6. Be concise, clear, and factual.
+
+    ---
+    CONVERSATION SUMMARY:
+    {summary}
+
+    QUESTION:
+    {input}
+
+    DOCUMENTS:
+    {documents}
+    """;
+
 
     @Autowired
     public EntryResource(OllamaChatModel chatClient, VectorStore vectorStore,UserSuggestionsUtil userSuggestionsUtil) {
@@ -62,42 +67,37 @@ public class EntryResource {
 
         ChatSessionState chatSession = ChatController.getOrInitChatSession(session);
         String optionSelected = (String) session.getAttribute("optionSelected");
+        List<ChatMessage> messages = chatSession.getMessages();
 
         if(optionSelected == null || optionSelected.isBlank()) {
+            String automatedResponse = "";
             if (userSuggestionsUtil.isValidOption(userInput)) {
                 session.setAttribute("optionSelected", userInput);
-                return "Great! You selected '" + userInput + "'. Ask your question now.";
+                messages.add(new ChatMessage("user",userInput,ChatConstant.AUTOMATED_MESSAGE_TYPE));
+                automatedResponse =  "Great! You selected '" + userInput + "'. Ask your question now.";
+                messages.add(new ChatMessage("ai",userInput,ChatConstant.AUTOMATED_MESSAGE_TYPE));
+                return automatedResponse;
             } else {
-                return "Invalid Input Please select from below! : " + String.join("\n", userSuggestionsUtil.getAvailableOptions());
+                messages.add(new ChatMessage("user",userInput,ChatConstant.AUTOMATED_MESSAGE_TYPE));
+                automatedResponse = "Invalid Input Please select from below! : " + String.join("\n", userSuggestionsUtil.getAvailableOptions());
+                messages.add(new ChatMessage("ai",automatedResponse,ChatConstant.AUTOMATED_MESSAGE_TYPE));
+                return automatedResponse;
             }
         }
 
-        List<ChatMessage> messages = ChatController.getMessagesFromSession(session);
         messages.add(new ChatMessage("user", userInput, ChatConstant.CONVERSATION_MESSAGE_TYPE));
-
-        // Send only last N messages to the AI
-        int maxMessages = 10; // You can tune this based on your needs
-        List<ChatMessage> recentMessages = messages.subList(
-                Math.max(messages.size() - maxMessages, 0),
-                messages.size()
-        );
-
-        StringBuilder context = new StringBuilder();
-        for (ChatMessage msg : recentMessages) {
-            if(ChatConstant.CONVERSATION_MESSAGE_TYPE.equals(msg.getType()))
-                context.append(msg.sender).append(": ").append(msg.text).append("\n");
-        }
-
-        System.out.println(context);
 
         PromptTemplate template = new PromptTemplate(prompt);
 
-        Map<String, Object> promptParameters = new HashMap<>();
-        promptParameters.put("input", context.toString());
-        promptParameters.put("documents", findSimilarData(context.toString(), source));
+        List<ChatMessage> contextForLlm = getContextMessages(chatSession);
+        Message msg = buildPrompt(chatSession.getSummary(), contextForLlm, userInput, null,template);
+        String llmResponse = chatClient.call(msg);
 
-        String llmResponse = chatClient.call(template.createMessage(promptParameters));
         messages.add(new ChatMessage("ai", llmResponse,ChatConstant.CONVERSATION_MESSAGE_TYPE));
+
+        if (chatSession.getMessages().size() > ChatConstant.SUMMARY_THRESHOLD) {
+            chatSession.setSummary(summarizeOldMessages(chatSession.getMessages()));
+        }
 
         return llmResponse;
     }
@@ -109,18 +109,49 @@ public class EntryResource {
                 .query(message)
                 .filterExpression(source != null ? filterExpr : null)
                 .build());
-        System.out.println(documents.size());
-        String response = documents.stream().map(Document::getFormattedContent).collect(Collectors.joining("/n"));
-        System.out.println(response);
+        System.out.println("Similarity Search Data Size : "+documents.size());
 
-         /* Alternative
-         return documents.stream()
-    .limit(5)
-    .map(Document::getFormattedContent)
-    .collect(Collectors.joining("\n"));
-          */
+        return documents.stream().map(Document::getFormattedContent).collect(Collectors.joining("\n"));
+    }
 
-        return response;
+    private String summarizeOldMessages(List<ChatMessage> all) {
+        List<ChatMessage> toSummarize = all.subList(0, Math.min(ChatConstant.SUMMARY_THRESHOLD, all.size()));
+        StringBuilder chatBlock = new StringBuilder();
+        for (ChatMessage msg : toSummarize) {
+            chatBlock.append(msg.getSender()).append(": ").append(msg.getText()).append("\n");
+        }
+        String summarizationPrompt = "Summarize the following conversation in 2-3 sentences:\n" + chatBlock;
+        return chatClient.call(summarizationPrompt);
+    }
+
+    private List<ChatMessage> getContextMessages(ChatSessionState session) {
+        List<ChatMessage> all = session.getMessages().stream()
+                .filter(msg -> ChatConstant.CONVERSATION_MESSAGE_TYPE.equals(msg.getType())).toList();
+        int start = Math.max(0, all.size() - ChatConstant.CONTEXT_SIZE);
+        return all.subList(start, all.size());
+    }
+
+    private Message buildPrompt(String summary, List<ChatMessage> context,
+                                String currentUserInput, String docContent,
+                                PromptTemplate template) {
+
+        Map<String, Object> promptParameters = new HashMap<>();
+        StringBuilder sb = new StringBuilder();
+        for (ChatMessage msg : context) {
+            sb.append(msg.getSender()).append(": ").append(msg.getText()).append("\n");
+        }
+        promptParameters.put("input", sb.toString());
+
+        String contextText = context.stream()
+                .map(m -> m.getSender() + ": " + m.getText())
+                .collect(Collectors.joining("\n"));
+        promptParameters.put("documents", findSimilarData(contextText, null));
+        if (summary != null && !summary.isEmpty()) {
+            promptParameters.put("summary", summary);
+        } else {
+            promptParameters.put("summary", "");
+        }
+        return template.createMessage(promptParameters);
     }
 
 }

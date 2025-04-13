@@ -29,13 +29,13 @@ public class ChatController {
     public String chatPage(HttpSession session, Model model){
         ChatSessionState chatSession = getOrInitChatSession(session);
         String optionSelected = (String) session.getAttribute("optionSelected");
-
+        List<ChatMessage> messages = chatSession.getMessages();
         if (optionSelected == null) {
-            model.addAttribute("messages",
-                    List.of(new ChatMessage("ai",String.join("\n", userSuggestionsUtil.getAvailableOptions()), ChatConstant.AUTOMATED_MESSAGE_TYPE)));
+            String automatedResponse = String.join("\n", userSuggestionsUtil.getAvailableOptions());
+            messages.add(new ChatMessage("ai",automatedResponse, ChatConstant.AUTOMATED_MESSAGE_TYPE));
+            model.addAttribute("messages", messages);
             return "chat";
         }
-        List<ChatMessage> messages = getMessagesFromSession(session);
         model.addAttribute("messages", messages);
         return "chat";
     }
