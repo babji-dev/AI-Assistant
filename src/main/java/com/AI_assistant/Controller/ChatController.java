@@ -31,7 +31,7 @@ public class ChatController {
         String optionSelected = (String) session.getAttribute("optionSelected");
         List<ChatMessage> messages = chatSession.getMessages();
         if (optionSelected == null) {
-            String automatedResponse = String.join("\n", userSuggestionsUtil.getAvailableOptions());
+            String automatedResponse = "I'm here to help you with below documents : <br/>"+String.join("<br/>", userSuggestionsUtil.getAvailableOptions());
             messages.add(new ChatMessage("ai",automatedResponse, ChatConstant.AUTOMATED_MESSAGE_TYPE));
             model.addAttribute("messages", messages);
             return "chat";
@@ -44,17 +44,6 @@ public class ChatController {
     public String clearChat(HttpSession session, Model model){
         session.invalidate(); // or remove chat context
         return "redirect:/chat";
-    }
-
-
-
-    public static List<ChatMessage> getMessagesFromSession(HttpSession session) {
-        List<ChatMessage> messages = (List<ChatMessage>) session.getAttribute("messages");
-        if (messages == null) {
-            messages = new ArrayList<>();
-            session.setAttribute("messages", messages);
-        }
-        return messages;
     }
 
     public static ChatSessionState getOrInitChatSession(HttpSession session) {

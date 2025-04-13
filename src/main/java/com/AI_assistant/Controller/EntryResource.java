@@ -37,7 +37,7 @@ public class EntryResource {
 
     Please follow these rules:
 
-    1. If the user greets you (e.g., "Hi", "Hello", "Good morning", etc.), respond politely and invite them to ask a question about the Indian Constitution.
+    1. If the user greets you (e.g., "Hi", "Hello", "Good morning", etc.), respond politely and invite them to ask a question about the below Mentioned documents.
     2. If the user asks a factual question, answer using only the content from the DOCUMENTS section.
     3. If the question asks for a summary, limit your response to the word count specified (e.g., "Summarize in 25 words").
     4. If the user asks for a list or bullet points, format your response accordingly.
