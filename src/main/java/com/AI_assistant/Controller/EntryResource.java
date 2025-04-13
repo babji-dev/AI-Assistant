@@ -107,10 +107,15 @@ public class EntryResource {
     private String findSimilarData(String message, String source) {
 
         String filterExpr = "source == '" + source + "'";
+        System.out.println(filterExpr);
         List<Document> documents = vectorStore.similaritySearch(SearchRequest.builder()
                 .query(message)
                 .filterExpression(source != null ? filterExpr : null)
                 .build());
+        for (Document doc : documents) {
+            doc.getMetadata().forEach((k, v) -> System.out.println(k + " = " + v));
+            System.out.println("Matched: " + doc.getMetadata().get("source"));
+        }
         System.out.println("Similarity Search Data Size : "+documents.size());
 
         return documents.stream().map(Document::getFormattedContent).collect(Collectors.joining("\n"));
