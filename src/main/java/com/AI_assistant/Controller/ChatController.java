@@ -1,6 +1,9 @@
 package com.AI_assistant.Controller;
 
+import com.AI_assistant.Constants.ChatConstant;
 import com.AI_assistant.Models.ChatMessage;
+import com.AI_assistant.Models.ChatSessionState;
+import com.AI_assistant.Utils.UserSuggestionsUtil;
 import jakarta.servlet.http.HttpSession;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -8,14 +11,30 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 @Controller
 @RequestMapping("/chat")
 public class ChatController {
 
+
+    private final UserSuggestionsUtil userSuggestionsUtil;
+
+    public ChatController(UserSuggestionsUtil userSuggestionsUtil){
+        this.userSuggestionsUtil = userSuggestionsUtil;
+    }
+
     @GetMapping("")
     public String chatPage(HttpSession session, Model model){
+        ChatSessionState chatSession = getOrInitChatSession(session);
+        String optionSelected = (String) session.getAttribute("optionSelected");
+
+        if (optionSelected == null) {
+            model.addAttribute("messages",
+                    List.of(new ChatMessage("ai",String.join("\n", userSuggestionsUtil.getAvailableOptions()), ChatConstant.AUTOMATED_MESSAGE_TYPE)));
+            return "chat";
+        }
         List<ChatMessage> messages = getMessagesFromSession(session);
         model.addAttribute("messages", messages);
         return "chat";
@@ -36,6 +55,15 @@ public class ChatController {
             session.setAttribute("messages", messages);
         }
         return messages;
+    }
+
+    public static ChatSessionState getOrInitChatSession(HttpSession session) {
+        ChatSessionState state = (ChatSessionState) session.getAttribute("chatSession");
+        if (state == null) {
+            state = new ChatSessionState();
+            session.setAttribute("chatSession", state);
+        }
+        return state;
     }
 
 }
