@@ -31,7 +31,7 @@ public class ChatController {
         String optionSelected = (String) session.getAttribute("optionSelected");
         List<ChatMessage> messages = chatSession.getMessages();
         if (optionSelected == null) {
-            String automatedResponse = "I'm here to help you with below documents :  \n"+String.join("<br/>\n", userSuggestionsUtil.getAvailableOptions());
+            String automatedResponse = "I'm here to help you with below documents : <br/>"+String.join("<br/>", userSuggestionsUtil.getAvailableOptions());
             messages.add(new ChatMessage("ai",automatedResponse, ChatConstant.AUTOMATED_MESSAGE_TYPE));
             model.addAttribute("messages", messages);
             return "chat";

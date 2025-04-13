@@ -97,7 +97,7 @@
             <div th:class="${msg.sender} == 'user' ? 'd-flex justify-content-end' : 'd-flex justify-content-start'">
                 <div class="chat-message"
                      th:classappend="${msg.sender} == 'user' ? ' user-msg' : ' ai-msg'"
-                     th:text="${msg.text}"></div>
+                     th:utext="${msg.text}"></div>
             </div>
         </div>
     </div>

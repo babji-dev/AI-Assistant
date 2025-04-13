@@ -92,7 +92,7 @@ public class EntryResource {
         PromptTemplate template = new PromptTemplate(prompt);
 
         List<ChatMessage> contextForLlm = getContextMessages(chatSession);
-        Message msg = buildPrompt(chatSession.getSummary(), contextForLlm, userInput, null,template);
+        Message msg = buildPrompt(chatSession.getSummary(), contextForLlm, userInput, source,template);
         String llmResponse = chatClient.call(msg);
 
         messages.add(new ChatMessage("ai", llmResponse,ChatConstant.CONVERSATION_MESSAGE_TYPE));
