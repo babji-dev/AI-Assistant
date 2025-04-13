@@ -12,4 +12,6 @@ public class ChatConstant {
     public static final String OPTION_TYPE_JUNIT = "JUNIT";
     public static final String OPTION_TYPE_DOCUMENT = "DOCUMENT";
 
+    public static final String JUNIT = "JUNIT";
+
 }

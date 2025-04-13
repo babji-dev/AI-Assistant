@@ -56,6 +56,12 @@ public class UserSuggestionsUtil {
 
     public ValidOptionDto isValidOption(String userInput){
         ValidOptionDto isValid = new ValidOptionDto();
+        if(ChatConstant.JUNIT.equalsIgnoreCase(userInput)){
+            isValid.setValid(true);
+            isValid.setOptionType(ChatConstant.OPTION_TYPE_JUNIT);
+            isValid.setSource(ChatConstant.OPTION_TYPE_JUNIT);
+            return isValid;
+        }
         try{
             int choice = Integer.parseInt(userInput);
             if(choice>=1 && choice<=fileNames.size()){

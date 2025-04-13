@@ -60,6 +60,25 @@ public class EntryResource {
             {documents}
             """;
 
+    private final String junitPrompt = """
+            You are an expert Java developer and test engineer. Your task is to write high-quality, production-ready unit test cases using JUnit 5 for the given Java method or class. Follow these strict guidelines:
+            
+            1. Use JUnit 5 (`@Test`, `Assertions`, etc.) for all tests.
+            2. If dependencies exist, use Mockito to mock them.
+            3. Ensure all logic branches (if-else/switch/catch/etc.) are tested.
+            4. Use clear and descriptive test method names following the pattern:
+               testMethodName_condition_expectedResult
+            5. Include edge cases and negative scenarios.
+            6. Avoid unnecessary boilerplate; focus on clarity and correctness.
+            7. Annotate the test class with `@ExtendWith(MockitoExtension.class)` when using mocks.
+            8. Ensure tests are **isolated**, **repeatable**, and **independent**.
+            9. Do **not** rewrite or modify the input class/method — only generate test cases.
+            10. If method relies on external classes, assume they are injectable and mockable.
+            
+            ### Input Java Code:
+            {input}
+            """;
+
 
     @Autowired
     public EntryResource(OllamaChatModel chatClient, VectorStore vectorStore, UserSuggestionsUtil userSuggestionsUtil) {
@@ -71,6 +90,7 @@ public class EntryResource {
     @PostMapping("/conversation")
     public String answer(@RequestParam String userInput, HttpSession session) {
 
+        userInput = userInput.trim();
         ChatSessionState chatSession = ChatController.getOrInitChatSession(session);
         String optionSelected = (String) session.getAttribute("optionSelected");
         String source = (String) session.getAttribute("source");
@@ -80,7 +100,12 @@ public class EntryResource {
             String automatedResponse = "";
             messages.add(new ChatMessage("user", userInput, ChatConstant.AUTOMATED_MESSAGE_TYPE));
             ValidOptionDto validOptionOrNot = userSuggestionsUtil.isValidOption(userInput);
-            if (validOptionOrNot.isValid()) {
+            if (validOptionOrNot.isValid() && ChatConstant.OPTION_TYPE_JUNIT.equalsIgnoreCase(validOptionOrNot.getOptionType())) {
+                session.setAttribute("optionSelected", userInput);
+                session.setAttribute("source", validOptionOrNot.getSource());
+                automatedResponse = "You're all set for JUNIT. Share your Java Method or Class Code.";
+                messages.add(new ChatMessage("ai", automatedResponse, ChatConstant.AUTOMATED_MESSAGE_TYPE));
+            } else if (validOptionOrNot.isValid()) {
                 session.setAttribute("optionSelected", userInput);
                 session.setAttribute("source", validOptionOrNot.getSource());
                 automatedResponse = "Great! You selected '" + userInput + "'. Ask your question now.";
@@ -90,6 +115,10 @@ public class EntryResource {
                 messages.add(new ChatMessage("ai", automatedResponse, ChatConstant.AUTOMATED_MESSAGE_TYPE));
             }
             return automatedResponse;
+        }
+
+        if (ChatConstant.OPTION_TYPE_JUNIT.equalsIgnoreCase(source)) {
+            return JUnitResponse(chatSession,userInput);
         }
 
         messages.add(new ChatMessage("user", userInput, ChatConstant.CONVERSATION_MESSAGE_TYPE));
@@ -164,6 +193,17 @@ public class EntryResource {
             promptParameters.put("summary", "");
         }
         return template.createMessage(promptParameters);
+    }
+
+
+    private String JUnitResponse(ChatSessionState chatSession,String userInput) {
+        List<ChatMessage> messages = chatSession.getMessages();
+        PromptTemplate template = new PromptTemplate(junitPrompt);
+        Map<String, Object> promptParameters = new HashMap<>();
+        promptParameters.put("input", userInput);
+        String llmResponse =  chatClient.call(template.createMessage(promptParameters));
+        messages.add(new ChatMessage("ai", llmResponse, ChatConstant.CONVERSATION_MESSAGE_TYPE));
+        return llmResponse;
     }
 
 }
