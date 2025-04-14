@@ -216,6 +216,7 @@ public class EntryResource {
         message.setType(messageType);
         message.setText(llmResponse);
         if (llmResponse != null && !llmResponse.isBlank() && llmResponse.contains("```")) {
+            System.out.println("Response has Code snippet");
             String plainText = llmResponse;
             String codeSnippet = null;
 
@@ -228,6 +229,7 @@ public class EntryResource {
             }
             message.setText(plainText);
             message.setCodeSnippet(codeSnippet);
+            System.out.println(codeSnippet);
         }
     }
 
