@@ -114,7 +114,7 @@ public class EntryResource {
                 updateChatMessageWithDetails(currentMessage,"ai",automatedResponse,null,ChatConstant.AUTOMATED_MESSAGE_TYPE);
                 messages.add(currentMessage);
             } else {
-                automatedResponse = "Invalid Input : <br/>" + String.join("<br/>", userSuggestionsUtil.getAvailableOptions());
+                automatedResponse = "Invalid Input : \n" + String.join("\n", userSuggestionsUtil.getAvailableOptions());
                 updateChatMessageWithDetails(currentMessage,"ai",automatedResponse,null,ChatConstant.AUTOMATED_MESSAGE_TYPE);
                 messages.add(currentMessage);
             }

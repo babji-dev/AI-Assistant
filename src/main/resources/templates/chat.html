@@ -17,7 +17,7 @@
         }
 
         .chat-container {
-            max-width: 800px;
+            max-width: 1200px;
             margin: auto;
             margin-top: 40px;
             border-radius: 12px;
@@ -105,7 +105,7 @@
             <div th:class="${msg.sender} == 'user' ? 'd-flex justify-content-end' : 'd-flex justify-content-start'">
                 <div class="chat-message" th:classappend="${msg.sender} == 'user' ? ' user-msg' : ' ai-msg'">
 
-                    <p th:if="${msg.text}" th:text="${msg.text}"></p>
+                    <p th:if="${msg.text}" th:utext="${msg.text}"></p>
 
                     <pre th:if="${msg.codeSnippet}">
                         <code class="language-java" th:text="${msg.codeSnippet}"></code>
@@ -164,8 +164,13 @@
                 const aiMessage = $('<div class="d-flex justify-content-start"><div class="chat-message ai-msg"></div></div>');
 
                 // Add plain text
+                //if (response.text && response.text.trim() !== '') {
+                   // const safeText = $('<div/>').text(response.text).html();
+                   // aiMessage.find('.chat-message').append(`<p>${safeText}</p>`);
+                //}
+
                 if (response.text && response.text.trim() !== '') {
-                    const safeText = $('<div/>').text(response.text).html();
+                    const safeText = $('<div/>').text(response.text).html().replace(/\n/g, '<br/>');
                     aiMessage.find('.chat-message').append(`<p>${safeText}</p>`);
                 }
 

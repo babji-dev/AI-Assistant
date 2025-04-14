@@ -29,10 +29,14 @@ public class ChatController {
     public String chatPage(HttpSession session, Model model){
         ChatSessionState chatSession = getOrInitChatSession(session);
         String optionSelected = (String) session.getAttribute("optionSelected");
+        String isWelcomeMessagePresent = (String) session.getAttribute("isWelcomeMessagePresent");
         List<ChatMessage> messages = chatSession.getMessages();
         if (optionSelected == null) {
-            String automatedResponse = "I'm here to help you with below documents : <br/>"+String.join("<br/>", userSuggestionsUtil.getAvailableOptions());
-            messages.add(new ChatMessage("ai",automatedResponse, ChatConstant.AUTOMATED_MESSAGE_TYPE));
+            if(!"true".equalsIgnoreCase(isWelcomeMessagePresent)){
+                String automatedResponse = "I'm here to help you with below documents : <br/> "+String.join("<br/>", userSuggestionsUtil.getAvailableOptions());
+                messages.add(new ChatMessage("ai",automatedResponse, ChatConstant.AUTOMATED_MESSAGE_TYPE));
+                session.setAttribute("isWelcomeMessagePresent","true");
+            }
             model.addAttribute("messages", messages);
             return "chat";
         }
