@@ -231,7 +231,7 @@ public class EntryResource {
 
             if (start >= 0 && end > start) {
                 codeSnippet = llmResponse.substring(start + 3, end).trim();
-                plainText = llmResponse.substring(0, start).trim();
+                plainText = llmResponse.substring(0, start).trim()+"\n "+llmResponse.substring(end);
             }
             message.setText(plainText);
             System.out.println("PalineText At 237 :: \n"+plainText);
