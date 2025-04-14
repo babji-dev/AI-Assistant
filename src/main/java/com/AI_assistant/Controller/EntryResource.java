@@ -90,6 +90,7 @@ public class EntryResource {
     @PostMapping("/conversation")
     public String answer(@RequestParam String userInput, HttpSession session) {
 
+        System.out.println("Request Initiated!");
         userInput = userInput.trim();
         ChatSessionState chatSession = ChatController.getOrInitChatSession(session);
         String optionSelected = (String) session.getAttribute("optionSelected");
@@ -118,7 +119,8 @@ public class EntryResource {
         }
 
         if (ChatConstant.OPTION_TYPE_JUNIT.equalsIgnoreCase(source)) {
-            return JUnitResponse(chatSession,userInput);
+            System.out.println("Request is for JUNIT Generation!");
+            return JUnitResponse(chatSession, userInput);
         }
 
         messages.add(new ChatMessage("user", userInput, ChatConstant.CONVERSATION_MESSAGE_TYPE));
@@ -134,7 +136,7 @@ public class EntryResource {
         if (chatSession.getMessages().size() > ChatConstant.SUMMARY_THRESHOLD) {
             chatSession.setSummary(summarizeOldMessages(chatSession.getMessages()));
         }
-
+        System.out.println("Request Completed!");
         return llmResponse;
     }
 
@@ -196,14 +198,37 @@ public class EntryResource {
     }
 
 
-    private String JUnitResponse(ChatSessionState chatSession,String userInput) {
+    private String JUnitResponse(ChatSessionState chatSession, String userInput) {
         List<ChatMessage> messages = chatSession.getMessages();
         PromptTemplate template = new PromptTemplate(junitPrompt);
         Map<String, Object> promptParameters = new HashMap<>();
         promptParameters.put("input", userInput);
-        String llmResponse =  chatClient.call(template.createMessage(promptParameters));
-        messages.add(new ChatMessage("ai", llmResponse, ChatConstant.CONVERSATION_MESSAGE_TYPE));
+        String llmResponse = chatClient.call(template.createMessage(promptParameters));
+        ChatMessage message = new ChatMessage();
+        segregateLlmResponse(llmResponse, message, "ai", ChatConstant.CONVERSATION_MESSAGE_TYPE);
+        messages.add(message);
+        System.out.println("JUNIT Response Completed");
         return llmResponse;
+    }
+
+    private void segregateLlmResponse(String llmResponse, ChatMessage message, String sender, String messageType) {
+        message.setSender(sender);
+        message.setType(messageType);
+        message.setText(llmResponse);
+        if (llmResponse != null && !llmResponse.isBlank() && llmResponse.contains("```")) {
+            String plainText = llmResponse;
+            String codeSnippet = null;
+
+            int start = llmResponse.indexOf("```");
+            int end = llmResponse.indexOf("```", start + 3);
+
+            if (start >= 0 && end > start) {
+                codeSnippet = llmResponse.substring(start + 3, end).trim();
+                plainText = llmResponse.substring(0, start).trim();
+            }
+            message.setText(plainText);
+            message.setCodeSnippet(codeSnippet);
+        }
     }
 
 }
