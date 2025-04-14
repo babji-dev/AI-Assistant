@@ -97,7 +97,7 @@
             <div th:class="${msg.sender} == 'user' ? 'd-flex justify-content-end' : 'd-flex justify-content-start'">
                 <div class="chat-message"
                      th:classappend="${msg.sender} == 'user' ? ' user-msg' : ' ai-msg'">
-<!--                    th:utext="${msg.text}"-->
+                    <!--                    th:utext="${msg.text}"-->
                     <!-- Show plain text explanation (HTML-safe) -->
                     <p th:if="${msg.text}" th:text="${msg.text}"></p>
 
@@ -149,22 +149,26 @@
 
             // Send to server
             $.post('/conversation', { userInput: userInput, model: selectedModel }, function (response) {
-                $('#typingRow').remove();
-                $('#chatBox').append(`
-                    <div class="d-flex justify-content-start">
-                        <div class="chat-message ai-msg">${response}</div>
-                    </div>
-                `);
-                scrollToBottom();
-            }).fail(function () {
-                $('#typingRow').remove();
-                $('#chatBox').append(`
-                    <div class="d-flex justify-content-start">
-                        <div class="chat-message ai-msg">⚠️ Error communicating with AI.</div>
-                    </div>
-                `);
-                scrollToBottom();
-            });
+    $('#typingRow').remove();
+
+    const aiMessage = $('<div class="d-flex justify-content-start"><div class="chat-message ai-msg"></div></div>');
+
+    // Add text if exists
+    if (response.text) {
+        aiMessage.find('.chat-message').append(`<p>${response.text}</p>`);
+    }
+
+    // Add codeSnippet if exists
+    if (response.codeSnippet) {
+        aiMessage.find('.chat-message').append(`
+            <pre><code class="language-java">${$('<div/>').text(response.codeSnippet).html()}</code></pre>
+        `);
+    }
+
+    $('#chatBox').append(aiMessage);
+    scrollToBottom();
+});
+
         });
 
         // Clear chat
