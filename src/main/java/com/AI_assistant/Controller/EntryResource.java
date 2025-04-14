@@ -88,7 +88,7 @@ public class EntryResource {
     }
 
     @PostMapping("/conversation")
-    public String answer(@RequestParam String userInput, HttpSession session) {
+    public ChatMessage answer(@RequestParam String userInput, HttpSession session) {
 
         System.out.println("Request Initiated!");
         userInput = userInput.trim();
@@ -96,7 +96,7 @@ public class EntryResource {
         String optionSelected = (String) session.getAttribute("optionSelected");
         String source = (String) session.getAttribute("source");
         List<ChatMessage> messages = chatSession.getMessages();
-
+        ChatMessage currentMessage = new ChatMessage();
         if (optionSelected == null || optionSelected.isBlank()) {
             String automatedResponse = "";
             messages.add(new ChatMessage("user", userInput, ChatConstant.AUTOMATED_MESSAGE_TYPE));
@@ -105,17 +105,20 @@ public class EntryResource {
                 session.setAttribute("optionSelected", userInput);
                 session.setAttribute("source", validOptionOrNot.getSource());
                 automatedResponse = "You're all set for JUNIT. Share your Java Method or Class Code.";
-                messages.add(new ChatMessage("ai", automatedResponse, ChatConstant.AUTOMATED_MESSAGE_TYPE));
+                updateChatMessageWithDetails(currentMessage,"ai",automatedResponse,null,ChatConstant.AUTOMATED_MESSAGE_TYPE);
+                messages.add(currentMessage);
             } else if (validOptionOrNot.isValid()) {
                 session.setAttribute("optionSelected", userInput);
                 session.setAttribute("source", validOptionOrNot.getSource());
                 automatedResponse = "Great! You selected '" + userInput + "'. Ask your question now.";
-                messages.add(new ChatMessage("ai", userInput, ChatConstant.AUTOMATED_MESSAGE_TYPE));
+                updateChatMessageWithDetails(currentMessage,"ai",automatedResponse,null,ChatConstant.AUTOMATED_MESSAGE_TYPE);
+                messages.add(currentMessage);
             } else {
                 automatedResponse = "Invalid Input : <br/>" + String.join("<br/>", userSuggestionsUtil.getAvailableOptions());
-                messages.add(new ChatMessage("ai", automatedResponse, ChatConstant.AUTOMATED_MESSAGE_TYPE));
+                updateChatMessageWithDetails(currentMessage,"ai",automatedResponse,null,ChatConstant.AUTOMATED_MESSAGE_TYPE);
+                messages.add(currentMessage);
             }
-            return automatedResponse;
+            return currentMessage;
         }
 
         if (ChatConstant.OPTION_TYPE_JUNIT.equalsIgnoreCase(source)) {
@@ -123,7 +126,8 @@ public class EntryResource {
             return JUnitResponse(chatSession, userInput);
         }
 
-        messages.add(new ChatMessage("user", userInput, ChatConstant.CONVERSATION_MESSAGE_TYPE));
+        updateChatMessageWithDetails(currentMessage,"user",userInput,null,ChatConstant.CONVERSATION_MESSAGE_TYPE);
+        messages.add(new ChatMessage("user",userInput,ChatConstant.CONVERSATION_MESSAGE_TYPE));
 
         PromptTemplate template = new PromptTemplate(prompt);
 
@@ -131,13 +135,14 @@ public class EntryResource {
         Message msg = buildPrompt(chatSession.getSummary(), contextForLlm, userInput, source, template);
         String llmResponse = chatClient.call(msg);
 
-        messages.add(new ChatMessage("ai", llmResponse, ChatConstant.CONVERSATION_MESSAGE_TYPE));
+        updateChatMessageWithDetails(currentMessage,"ai",llmResponse,null,ChatConstant.CONVERSATION_MESSAGE_TYPE);
+        messages.add(currentMessage);
 
         if (chatSession.getMessages().size() > ChatConstant.SUMMARY_THRESHOLD) {
             chatSession.setSummary(summarizeOldMessages(chatSession.getMessages()));
         }
         System.out.println("Request Completed!");
-        return llmResponse;
+        return currentMessage;
     }
 
     private String findSimilarData(String message, String source) {
@@ -198,7 +203,7 @@ public class EntryResource {
     }
 
 
-    private String JUnitResponse(ChatSessionState chatSession, String userInput) {
+    private ChatMessage JUnitResponse(ChatSessionState chatSession, String userInput) {
         List<ChatMessage> messages = chatSession.getMessages();
         PromptTemplate template = new PromptTemplate(junitPrompt);
         Map<String, Object> promptParameters = new HashMap<>();
@@ -208,7 +213,7 @@ public class EntryResource {
         segregateLlmResponse(llmResponse, message, "ai", ChatConstant.CONVERSATION_MESSAGE_TYPE);
         messages.add(message);
         System.out.println("JUNIT Response Completed");
-        return llmResponse;
+        return message;
     }
 
     private void segregateLlmResponse(String llmResponse, ChatMessage message, String sender, String messageType) {
@@ -231,6 +236,13 @@ public class EntryResource {
             message.setCodeSnippet(codeSnippet);
             System.out.println(codeSnippet);
         }
+    }
+
+    private void updateChatMessageWithDetails(ChatMessage currentMessage,String sender,String text,String codeSnippet,String messageType){
+        currentMessage.setSender(sender);
+        currentMessage.setCodeSnippet(codeSnippet);
+        currentMessage.setText(text);
+        currentMessage.setType(messageType);
     }
 
 }

@@ -100,16 +100,13 @@
 
     <!-- Chat Body -->
     <div id="chatBox" class="chat-body d-flex flex-column">
-        <!-- Loop through Thymeleaf messages -->
+        <!-- Thymeleaf loop -->
         <div th:each="msg : ${messages}">
             <div th:class="${msg.sender} == 'user' ? 'd-flex justify-content-end' : 'd-flex justify-content-start'">
-                <div class="chat-message"
-                     th:classappend="${msg.sender} == 'user' ? ' user-msg' : ' ai-msg'">
+                <div class="chat-message" th:classappend="${msg.sender} == 'user' ? ' user-msg' : ' ai-msg'">
 
-                    <!-- Show plain text explanation -->
                     <p th:if="${msg.text}" th:text="${msg.text}"></p>
 
-                    <!-- Show code snippet -->
                     <pre th:if="${msg.codeSnippet}">
                         <code class="language-java" th:text="${msg.codeSnippet}"></code>
                     </pre>
@@ -140,7 +137,7 @@
             const userInput = $('#userInput').val().trim();
             if (!userInput) return;
 
-            // Append user message
+            // Add user message
             $('#chatBox').append(`
                 <div class="d-flex justify-content-end">
                     <div class="chat-message user-msg">${$('<div/>').text(userInput).html()}</div>
@@ -160,25 +157,37 @@
             const selectedModel = $('#modelSelect').val();
 
             $.post('/conversation', { userInput: userInput, model: selectedModel }, function (response) {
+                console.log("AI Response:", response);
+
                 $('#typingRow').remove();
 
                 const aiMessage = $('<div class="d-flex justify-content-start"><div class="chat-message ai-msg"></div></div>');
 
                 // Add plain text
-                if (response.text) {
-                    aiMessage.find('.chat-message').append(`<p>${$('<div/>').text(response.text).html()}</p>`);
+                if (response.text && response.text.trim() !== '') {
+                    const safeText = $('<div/>').text(response.text).html();
+                    aiMessage.find('.chat-message').append(`<p>${safeText}</p>`);
                 }
 
                 // Add code snippet
-                if (response.codeSnippet) {
+                if (response.codeSnippet && response.codeSnippet.trim() !== '') {
+                    const safeCode = $('<div/>').text(response.codeSnippet).html();
                     aiMessage.find('.chat-message').append(`
-                        <pre><code class="language-java">${$('<div/>').text(response.codeSnippet).html()}</code></pre>
+                        <pre><code class="language-java">${safeCode}</code></pre>
                     `);
                 }
 
+                if (!response.text && !response.codeSnippet) {
+                    aiMessage.find('.chat-message').append(`<p><em>(No response from AI)</em></p>`);
+                }
+
                 $('#chatBox').append(aiMessage);
-                Prism.highlightAll();
-                scrollToBottom();
+
+                // Delay highlighting to ensure DOM is ready
+                setTimeout(() => {
+                    Prism.highlightAll();
+                    scrollToBottom();
+                }, 10);
             }).fail(function () {
                 $('#typingRow').remove();
                 $('#chatBox').append(`
@@ -200,9 +209,11 @@
         });
 
         function scrollToBottom() {
-            $('#chatBox').scrollTop($('#chatBox')[0].scrollHeight);
+            const chatBox = $('#chatBox');
+            chatBox.stop().animate({ scrollTop: chatBox[0].scrollHeight }, 500);
         }
 
+        Prism.highlightAll();
         scrollToBottom();
     });
 </script>
